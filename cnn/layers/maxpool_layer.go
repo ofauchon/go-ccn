@@ -1,56 +1,41 @@
+// Package layers provide various layers
 package layers
 
 // MaxPoolingLayer represents a max pooling layer in the CNN
 type MaxPoolingLayer struct {
 	InputSize    int
 	InputDepth   int
-	KernelSize   int
+	PoolSize     int
 	OutputSize   int
 	Stride       int
 	Output       [][][]float32
-	HighestIndex [][][][2]int  // Tuple (top, left) representing the position of the highest value
+	HighestIndex [][][][]int   // Tuple (x,y,z)[2]int representing the position of the highest value // TODO: WTF
 	PrevError    [][][]float32 // Add this line
 
 }
 
-// NewMaxPoolingLayer creates a new MaxPoolingLayer object with the specified parameters
-// inputSize: The spatial dimensions (width and height) of the input.
-// inputDepth: number of channels or feature maps in the input data
-// kernelSize:  The size of the pooling window used for max pooling.
-// stride: The step size or interval at which the pooling window moves over the input.
-func NewMaxPoolingLayer(inputSize, inputDepth, kernelSize, stride int) *MaxPoolingLayer {
-	outputSize := ((inputSize - kernelSize) / stride) + 1
+// NewMaxPoolingLayer creates a new custom MaxPooling layer.
+// inputSize is the spatial dimensions (width and height) of the input.
+// inputDepth is the number of channels or feature maps in the input data
+// poolSize is the spatial dimensions (width and height) of the pooling window used.
+// stride is the step size or interval at which the pooling window moves over the input.
+// It returns an initialized MaxPoolingLayer object
+func NewMaxPoolingLayer(inputSize, inputDepth, poolSize, stride int) *MaxPoolingLayer {
+	// Determine the output size based on the input size and the pool size
+	outputSize := ((inputSize - poolSize) / stride) + 1
 
 	// Create and return a new MaxPoolingLayer with the initialized parameters and slices
 	mpl := &MaxPoolingLayer{
-		InputSize:    inputSize,
-		InputDepth:   inputDepth,
-		KernelSize:   kernelSize,
-		OutputSize:   outputSize,
-		Stride:       stride,
-		Output:       make([][][]float32, inputDepth),
-		HighestIndex: make([][][][2]int, inputDepth),
-		PrevError:    make([][][]float32, inputDepth),
+		InputSize:  inputSize,
+		InputDepth: inputDepth,
+		PoolSize:   poolSize,
+		OutputSize: outputSize,
+		Stride:     stride,
 	}
 
-	// Initialize output slices
-	for f := 0; f < mpl.InputDepth; f++ {
-		mpl.Output[f] = make([][]float32, mpl.OutputSize)
-		mpl.HighestIndex[f] = make([][][2]int, mpl.OutputSize)
-
-		for y := 0; y < mpl.OutputSize; y++ {
-			mpl.Output[f][y] = make([]float32, mpl.OutputSize)
-			mpl.HighestIndex[f][y] = make([][2]int, mpl.OutputSize)
-		}
-	}
-
-	// Initialize the prevError slices
-	for i := range mpl.PrevError {
-		mpl.PrevError[i] = make([][]float32, inputSize)
-		for j := range mpl.PrevError[i] {
-			mpl.PrevError[i][j] = make([]float32, inputSize)
-		}
-	}
+	mpl.Output = make3D[float32](inputDepth, outputSize, outputSize)
+	mpl.HighestIndex = make4D[int](inputDepth, outputSize, outputSize, 2)
+	mpl.PrevError = make3D[float32](inputDepth, inputSize, inputSize)
 
 	return mpl
 }
@@ -67,14 +52,14 @@ func (mpl *MaxPoolingLayer) ForwardPropagate(input [][][]float32) [][][]float32 
 				mpl.Output[f][y][x] = -1.0
 				// Loop through each position in the receptive field
 				// and find the highest value
-				for yP := 0; yP < mpl.KernelSize; yP++ {
-					for xP := 0; xP < mpl.KernelSize; xP++ {
+				for yP := 0; yP < mpl.PoolSize; yP++ {
+					for xP := 0; xP < mpl.PoolSize; xP++ {
 						val := input[f][top+yP][left+xP]
 						if val > mpl.Output[f][y][x] {
 							mpl.Output[f][y][x] = val
 
 							// Store the position of the highest value for backpropagation
-							mpl.HighestIndex[f][y][x] = [2]int{top + yP, left + xP}
+							mpl.HighestIndex[f][y][x] = []int{top + yP, left + xP}
 						}
 					}
 				}

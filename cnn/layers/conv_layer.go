@@ -21,6 +21,7 @@ type ConvLayer struct {
 
 // NewConvLayer creates a new ConvLayer object with the specified parameters
 func NewConvLayer(inputSize, inputDepth, numFilters, kernelSize, stride int) *ConvLayer {
+
 	biases := make([]float32, numFilters)
 	kernels := make([][][][]float32, numFilters)
 
@@ -44,7 +45,7 @@ func NewConvLayer(inputSize, inputDepth, numFilters, kernelSize, stride int) *Co
 
 	outputSize := ((inputSize - kernelSize) / stride) + 1
 
-	return &ConvLayer{
+	cl := &ConvLayer{
 		InputSize:  inputSize,
 		InputDepth: inputDepth,
 		NumFilters: numFilters,
@@ -54,19 +55,19 @@ func NewConvLayer(inputSize, inputDepth, numFilters, kernelSize, stride int) *Co
 		Biases:     biases,
 		Kernels:    kernels,
 		Input:      nil,
-		Output:     make([][][]float32, numFilters),
 	}
+
+	cl.Output = make3D[float32](numFilters, outputSize, outputSize)
+	return cl
+
 }
 
 // ForwardPropagate performs forward propagation through the ConvLayer
 func (cl *ConvLayer) ForwardPropagate(input [][][]float32) [][][]float32 {
 	cl.Input = cloneInput(input)
-	cl.Output = make([][][]float32, cl.NumFilters)
 
 	for f := 0; f < cl.NumFilters; f++ {
-		cl.Output[f] = make([][]float32, cl.OutputSize)
 		for i := 0; i < cl.OutputSize; i++ {
-			cl.Output[f][i] = make([]float32, cl.OutputSize)
 			for j := 0; j < cl.OutputSize; j++ {
 				cl.Output[f][i][j] = cl.Biases[f]
 
@@ -96,15 +97,18 @@ func (cl *ConvLayer) ForwardPropagate(input [][][]float32) [][][]float32 {
 
 // BackPropagate performs backpropagation through the ConvLayer
 func (cl *ConvLayer) BackPropagate(error [][][]float32) [][][]float32 {
-	prevError := make([][][]float32, cl.InputDepth)
+	//prevError := make([][][]float32, cl.InputDepth)
 	newKernels := cloneKernels(cl.Kernels)
-
-	for f_i := 0; f_i < cl.InputDepth; f_i++ {
-		prevError[f_i] = make([][]float32, cl.InputSize)
-		for i := 0; i < cl.InputSize; i++ {
-			prevError[f_i][i] = make([]float32, cl.InputSize)
+	/*
+		for f_i := 0; f_i < cl.InputDepth; f_i++ {
+			prevError[f_i] = make([][]float32, cl.InputSize)
+			for i := 0; i < cl.InputSize; i++ {
+				prevError[f_i][i] = make([]float32, cl.InputSize)
+			}
 		}
-	}
+	*/
+
+	prevError := make3D[float32](cl.InputDepth, cl.InputSize, cl.InputSize)
 
 	for y := 0; y < cl.OutputSize; y++ {
 		for x := 0; x < cl.OutputSize; x++ {
