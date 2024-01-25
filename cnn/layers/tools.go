@@ -51,3 +51,11 @@ func clone4D(data [][][][]float32) [][][][]float32 {
 	}
 	return clonedKernels
 }
+
+// Helper function to find the maximum of two float32 values
+func max(a, b float32) float32 {
+	if a > b {
+		return a
+	}
+	return b
+}
