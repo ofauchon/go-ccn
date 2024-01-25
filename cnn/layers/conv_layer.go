@@ -23,25 +23,10 @@ type ConvLayer struct {
 func NewConvLayer(inputSize, inputDepth, numFilters, kernelSize, stride int) *ConvLayer {
 
 	biases := make([]float32, numFilters)
-	kernels := make([][][][]float32, numFilters)
 
 	// Use He initialization with a mean of 0.0 and standard deviation of sqrt(2 / (inputDepth * kernelSize^2))
 	normal := rand.New(rand.NewSource(42))
 	standardDeviation := float32(math.Sqrt(2.0 / float64(inputDepth*kernelSize*kernelSize)))
-
-	for f := 0; f < numFilters; f++ {
-		biases[f] = 0.1
-		kernels[f] = make([][][]float32, inputDepth)
-		for i := 0; i < inputDepth; i++ {
-			kernels[f][i] = make([][]float32, kernelSize)
-			for j := 0; j < kernelSize; j++ {
-				kernels[f][i][j] = make([]float32, kernelSize)
-				for k := 0; k < kernelSize; k++ {
-					kernels[f][i][j][k] = float32(normal.NormFloat64()) * standardDeviation
-				}
-			}
-		}
-	}
 
 	outputSize := ((inputSize - kernelSize) / stride) + 1
 
@@ -53,18 +38,33 @@ func NewConvLayer(inputSize, inputDepth, numFilters, kernelSize, stride int) *Co
 		OutputSize: outputSize,
 		Stride:     stride,
 		Biases:     biases,
-		Kernels:    kernels,
+		Kernels:    nil,
 		Input:      nil,
+		Output:     nil,
 	}
 
 	cl.Output = make3D[float32](numFilters, outputSize, outputSize)
+	cl.Kernels = make4D[float32](numFilters, inputDepth, kernelSize, kernelSize)
+	cl.OutputSize = outputSize
+
+	for f := 0; f < numFilters; f++ {
+		biases[f] = 0.1
+		for i := 0; i < inputDepth; i++ {
+			for j := 0; j < kernelSize; j++ {
+				for k := 0; k < kernelSize; k++ {
+					cl.Kernels[f][i][j][k] = float32(normal.NormFloat64()) * standardDeviation
+				}
+			}
+		}
+	}
+
 	return cl
 
 }
 
 // ForwardPropagate performs forward propagation through the ConvLayer
 func (cl *ConvLayer) ForwardPropagate(input [][][]float32) [][][]float32 {
-	cl.Input = cloneInput(input)
+	cl.Input = clone3D(input)
 
 	for f := 0; f < cl.NumFilters; f++ {
 		for i := 0; i < cl.OutputSize; i++ {
@@ -92,21 +92,12 @@ func (cl *ConvLayer) ForwardPropagate(input [][][]float32) [][][]float32 {
 		}
 	}
 
-	return cloneInput(cl.Output)
+	return clone3D(cl.Output)
 }
 
 // BackPropagate performs backpropagation through the ConvLayer
 func (cl *ConvLayer) BackPropagate(error [][][]float32) [][][]float32 {
-	//prevError := make([][][]float32, cl.InputDepth)
-	newKernels := cloneKernels(cl.Kernels)
-	/*
-		for f_i := 0; f_i < cl.InputDepth; f_i++ {
-			prevError[f_i] = make([][]float32, cl.InputSize)
-			for i := 0; i < cl.InputSize; i++ {
-				prevError[f_i][i] = make([]float32, cl.InputSize)
-			}
-		}
-	*/
+	newKernels := clone4D(cl.Kernels)
 
 	prevError := make3D[float32](cl.InputDepth, cl.InputSize, cl.InputSize)
 
@@ -143,35 +134,6 @@ func (cl *ConvLayer) BackPropagate(error [][][]float32) [][][]float32 {
 // GetOutput returns the output value at the specified index
 func (cl *ConvLayer) GetOutput(index int) float32 {
 	panic("Convolutional layers should not be accessed directly.")
-}
-
-// Helper function to clone the input matrix
-func cloneInput(input [][][]float32) [][][]float32 {
-	clonedInput := make([][][]float32, len(input))
-	for i := range input {
-		clonedInput[i] = make([][]float32, len(input[i]))
-		for j := range input[i] {
-			clonedInput[i][j] = make([]float32, len(input[i][j]))
-			copy(clonedInput[i][j], input[i][j])
-		}
-	}
-	return clonedInput
-}
-
-// Helper function to clone the kernels matrix
-func cloneKernels(kernels [][][][]float32) [][][][]float32 {
-	clonedKernels := make([][][][]float32, len(kernels))
-	for i := range kernels {
-		clonedKernels[i] = make([][][]float32, len(kernels[i]))
-		for j := range kernels[i] {
-			clonedKernels[i][j] = make([][]float32, len(kernels[i][j]))
-			for k := range kernels[i][j] {
-				clonedKernels[i][j][k] = make([]float32, len(kernels[i][j][k]))
-				copy(clonedKernels[i][j][k], kernels[i][j][k])
-			}
-		}
-	}
-	return clonedKernels
 }
 
 // Helper function to find the maximum of two float32 values

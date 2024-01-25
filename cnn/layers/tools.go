@@ -22,3 +22,32 @@ func make4D[T any](d1, d2, d3, d4 int) [][][][]T {
 
 	return x
 }
+
+// Helper function to clone 3D Matrix
+func clone3D(data [][][]float32) [][][]float32 {
+	clonedInput := make([][][]float32, len(data))
+	for i := range data {
+		clonedInput[i] = make([][]float32, len(data[i]))
+		for j := range data[i] {
+			clonedInput[i][j] = make([]float32, len(data[i][j]))
+			copy(clonedInput[i][j], data[i][j])
+		}
+	}
+	return clonedInput
+}
+
+// Helper function to clone 4D Matrix
+func clone4D(data [][][][]float32) [][][][]float32 {
+	clonedKernels := make([][][][]float32, len(data))
+	for i := range data {
+		clonedKernels[i] = make([][][]float32, len(data[i]))
+		for j := range data[i] {
+			clonedKernels[i][j] = make([][]float32, len(data[i][j]))
+			for k := range data[i][j] {
+				clonedKernels[i][j][k] = make([]float32, len(data[i][j][k]))
+				copy(clonedKernels[i][j][k], data[i][j][k])
+			}
+		}
+	}
+	return clonedKernels
+}
