@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	_ "net/http/pprof"
+	"os"
 	"runtime/pprof"
 	"time"
 
@@ -82,12 +83,12 @@ func main() {
 
 	// Create a new CNN and specify its layers
 	fmt.Println("Initializing CNN")
-	cnn := cnn.NewCNN()
-	cnn.AddConvLayer(28, 1, 6, 5, 1)
-	cnn.AddMaxPoolingLayer(24, 6, 2, 2)
-	cnn.AddConvLayer(12, 6, 9, 3, 1)
-	cnn.AddMaxPoolingLayer(10, 9, 2, 2)
-	cnn.AddFullyConnectedLayer(5, 9, 10)
+	cn := cnn.NewCNN()
+	cn.AddConvLayer(28, 1, 6, 5, 1)
+	cn.AddMaxPoolingLayer(24, 6, 2, 2)
+	cn.AddConvLayer(12, 6, 9, 3, 1)
+	cn.AddMaxPoolingLayer(10, 9, 2, 2)
+	cn.AddFullyConnectedLayer(5, 9, 10)
 
 	// Training speed/length
 	epochs := int(10)
@@ -97,18 +98,22 @@ func main() {
 	resultsHistory := []bool{}
 	accuracy := float32(0)
 
+	accuracyTarget := 0.98
+
 	// Iteration of training with whole dataset
 	for epoch := 1; epoch <= epochs; epoch++ {
 
 		// Batch processing
 		trainLength := trainData.Count()
 
-		for batchStart := 0; batchStart < trainLength; batchStart += batchSize {
+		for batchStart := 0; batchStart < trainLength && accuracy < float32(accuracyTarget); batchStart += batchSize {
 			batchEnd := batchStart + batchSize
 			if batchEnd > trainData.Count() {
 				batchEnd = trainData.Count()
 			}
-			fmt.Printf("Epoch: %d, Acc: %.2fpct Batch %d-%d \n", epoch, accuracy, batchStart, batchEnd)
+			resultsHistory = []bool{}
+
+			fmt.Printf("Epoch: %d, Acc: %.2fpct Batch %d-%d \n", epoch, accuracy*100, batchStart, batchEnd)
 
 			// Get a batch of train data (images/label)
 			batch := trainData.Images[batchStart:batchEnd]
@@ -117,14 +122,14 @@ func main() {
 			for i := 0; i < len(batch); i++ {
 
 				// Forward pass
-				output := cnn.ForwardPropagate(ConvertRawImageToFloat32(batch[i]))
+				output := cn.ForwardPropagate(ConvertRawImageToFloat32(batch[i]))
 
 				// Check result and store it in result history
 				result := highestIndex(output) == uint8(labels[i])
 				resultsHistory = append(resultsHistory, result)
 
 				// Back propagation
-				cnn.BackPropagate(int(labels[i]))
+				cn.BackPropagate(int(labels[i]))
 			}
 
 			// Compute results stats
@@ -134,10 +139,21 @@ func main() {
 					trueCnt += 1
 				}
 			}
-			accuracy = (float32(trueCnt) / float32(len(resultsHistory)) * 100)
+			accuracy = float32(trueCnt) / float32(len(resultsHistory))
 
 			//optimizer.update(cnn) // Adjust this based on your optimizer implementation
 		}
+	}
+
+	fn := "/tmp/cnn.json"
+	if accuracy > float32(accuracyTarget) {
+		data := cnn.EncodeCNN(cn)
+
+		err := os.WriteFile(fn, data, 0644)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println("CNN model saved to: ", fn)
 	}
 
 	pprof.StopCPUProfile()

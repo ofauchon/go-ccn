@@ -1,6 +1,8 @@
 package cnn
 
-import "github.com/ofauchon/go-cnn/cnn/layers"
+import (
+	"github.com/ofauchon/go-cnn/cnn/layers"
+)
 
 // Layer interface represents the common behavior of ConvLayer, MaxPoolingLayer, and FullyConnectedLayer
 type Layer interface {
@@ -11,30 +13,30 @@ type Layer interface {
 
 // CNN represents a Convolutional Neural Network
 type CNN struct {
-	layers []Layer
+	Layers []Layer
 }
 
 // NewCNN creates a new empty CNN object
 func NewCNN() *CNN {
-	return &CNN{layers: []Layer{}}
+	return &CNN{Layers: []Layer{}}
 }
 
 // AddConvLayer adds a convolutional layer to the neural network
 func (c *CNN) AddConvLayer(inputSize, inputDepth, numFilters, kernelSize, stride int) {
 	convLayer := layers.NewConvLayer(inputSize, inputDepth, numFilters, kernelSize, stride)
-	c.layers = append(c.layers, convLayer)
+	c.Layers = append(c.Layers, convLayer)
 }
 
 // AddMaxPoolingLayer adds a max pooling layer to the neural network
 func (c *CNN) AddMaxPoolingLayer(inputSize, inputDepth, kernelSize, stride int) {
 	mxplLayer := layers.NewMaxPoolingLayer(inputSize, inputDepth, kernelSize, stride)
-	c.layers = append(c.layers, mxplLayer)
+	c.Layers = append(c.Layers, mxplLayer)
 }
 
 // AddFullyConnectedLayer adds a fully connected layer to the neural network
 func (c *CNN) AddFullyConnectedLayer(inputWidth, inputDepth, outputSize int) {
 	fclLayer := layers.NewFullyConnectedLayer(inputWidth, inputDepth, outputSize)
-	c.layers = append(c.layers, fclLayer)
+	c.Layers = append(c.Layers, fclLayer)
 }
 
 // ForwardPropagate performs forward propagation through the CNN
@@ -42,7 +44,7 @@ func (c *CNN) ForwardPropagate(image [][][]float32) []float32 {
 	output := image
 
 	// Forward propagate through each layer of the network
-	for _, layer := range c.layers {
+	for _, layer := range c.Layers {
 		output = layer.ForwardPropagate(output)
 	}
 
@@ -63,8 +65,8 @@ func (c *CNN) LastLayerError(label int) [][][]float32 {
 		if label == i {
 			desired = 1
 		}
-		lastIndex := len(c.layers) - 1
-		error = append(error, float32(corrFactor)*(c.layers[lastIndex].GetOutput(i)-desired))
+		lastIndex := len(c.Layers) - 1
+		error = append(error, float32(corrFactor)*(c.Layers[lastIndex].GetOutput(i)-desired))
 	}
 
 	return [][][]float32{{error}}
@@ -76,13 +78,10 @@ func (c *CNN) BackPropagate(label int) {
 	error := c.LastLayerError(label)
 
 	// Iterate backwards through the layers and backpropagate the error
-	for i := len(c.layers) - 1; i >= 0; i-- {
-		error = c.layers[i].BackPropagate(error)
+	for i := len(c.Layers) - 1; i >= 0; i-- {
+		error = c.Layers[i].BackPropagate(error)
 	}
 }
-
-// Implementation of ConvLayer, MaxPoolingLayer, FullyConnectedLayer, and their methods...
-// ...
 
 // flattenOutput flattens the output of the final layer
 func flattenOutput(output [][][]float32) []float32 {

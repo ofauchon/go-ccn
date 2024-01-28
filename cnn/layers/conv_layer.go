@@ -97,8 +97,8 @@ func (cl *ConvLayer) ForwardPropagate(input [][][]float32) [][][]float32 {
 
 // BackPropagate performs backpropagation through the ConvLayer
 func (cl *ConvLayer) BackPropagate(error [][][]float32) [][][]float32 {
-	newKernels := clone4D(cl.Kernels)
 
+	newKernels := clone4D(cl.Kernels)
 	prevError := make3D[float32](cl.InputDepth, cl.InputSize, cl.InputSize)
 
 	for y := 0; y < cl.OutputSize; y++ {
